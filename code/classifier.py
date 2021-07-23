@@ -41,8 +41,8 @@ def main():
     global patch_size
     global save_pth
     
-    root = r"/content/gdrive/MyDrive/Three Channel Database"
-    save_pth = r'/content/gdrive/MyDrive/saves/'
+    root = r"../"
+    save_pth = r'../saves/'
     patch_size = 9
     lr = 0.001
     epochs = 10
