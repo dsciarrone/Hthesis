@@ -13,16 +13,12 @@ Original file is located at
 
 import torch
 import torchvision
-from torchvision.models.segmentation.deeplabv3 import DeepLabHead
-from torchvision.models.segmentation.fcn import FCNHead
-from torchvision.models.segmentation.lraspp import LRASPPHead
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torch.optim as optim
 from torch.utils import data
 from PIL import Image
-import cv2 as cv
 import matplotlib.pyplot as plt
 import matplotlib.image as matimg
 import numpy as np
@@ -41,8 +37,8 @@ def main():
     global patch_size
     global save_pth
     
-    root = r"../"
-    save_pth = r'../saves/'
+    root = r"./"
+    save_pth = r'./saves/'
     patch_size = 9
     lr = 0.001
     epochs = 10
@@ -89,8 +85,7 @@ def main():
 class classifier():
     def resnet_101(self):
       global model_type
-      global channel
-      model_type = 'resnet101' + str(channel)
+      model_type = 'resnet101'
       model = torchvision.models.resnet101(progress=True)
       model.fc = nn.Sequential(
                nn.Linear(2048, 128),
@@ -152,7 +147,6 @@ class Dataloader():
     def __init__(self):
         global root
         global patch_size
-        global channels
 
         self.transforms = transforms.Compose([transforms.Resize(224),
                                               transforms.ToTensor(),
@@ -180,8 +174,8 @@ class Dataloader():
         return trainval_loader, test_loader
     
     def patcher(self):
-      a = DatasetList(root + "/Trainval/Image").__lst__() + DatasetList(root + "/Test/Image").__lst__()
-      b = DatasetList(root + "/Trainval/Mask").__lst__() + DatasetList(root + "/Test/Mask").__lst__()
+      a = DatasetList(root + "Image").__lst__()
+      b = DatasetList(root + "Mask").__lst__() 
       
       pad_size = int(np.floor(patch_size/2))
       patches = []
@@ -191,9 +185,6 @@ class Dataloader():
       for ii in tqdm(range(num_im)):
         im = np.array(Image.open(a[ii]).convert('RGB'))
 
-        zeroes = np.where(channel == 0)
-        for each_index in zeroes[0]:
-          im[:,:,each_index] = 0
 
         msk = np.array(Image.open(b[ii]).convert('1'))
         w,h = msk.shape
@@ -243,8 +234,8 @@ class visualise():
         print(torch.argmax(targets, axis = 1))
     
     def __iter__(self):
-        im_path = DatasetList(root + "/Test/Image").__lst__()
-        msk_path = DatasetList(root + "/Test/Mask").__lst__()
+        im_path = DatasetList(root + "Image").__lst__()
+        msk_path = DatasetList(root + "Mask").__lst__()
         rnd = random.randint(0,len(msk_path) - 1)
         img = np.array(Image.open(im_path[rnd]).convert('RGB'))
         msk = np.array(Image.open(msk_path[rnd]).convert('1'))
@@ -462,136 +453,4 @@ class Decoder():
         return prediction
 
 """# Testing"""
-
-from google.colab import drive
-
-drive.mount('/content/gdrive')
-
 model, trainval_loader, prediction = main()
-
-global root
-root = r"/content/gdrive/MyDrive/Three Channel Database"
-image, mask, name = visualise().__iter__()
-print('\n ' + str(name))
-plt.imshow(image)
-plt.show()
-plt.imshow(mask, cmap = 'gray', vmin = 0, vmax = 1)
-plt.show()
-
-global model
-global root
-global patch_size
-global save_pth
-global channels
-root = r"/content/gdrive/MyDrive/Three Channel Database"
-save_pth = r'/content/gdrive/MyDrive/saves/'
-patch_size = 9
-channels = np.array([[1,0,0], [1,1,0], [1,1,1], [1,0,1], [0,1,1], [0,0,1], [0,1,0]])
-
-image, mask, name = visualise().__iter__()
-
-model = classifier().resnet_101()
-model = saveload().model_load()
-prediction = Decoder(image).single_test()
-Decoder(image).mask(prediction)
-
-global patch_size
-patch_size = 9
-dice = metrics().dice(mask, prediction)
-print(dice)
-
-thresh = Image.open("/content/gdrive/MyDrive/012_image_HF016S3.png (red).png").convert('1')
-thresh = np.array(thresh)
-ind = int(np.floor(patch_size/2))
-thresh1 = thresh[ind:-ind-1,ind:-ind-1]
-
-global patch_size
-patch_size = 9
-dice = metrics().dice(mask, thresh1)
-print(dice)
-
-plt.imshow(thresh, cmap = 'gray')
-
-global criterion
-global optimizer
-global model
-global root
-global patch_size
-global save_pth
-global channels
-
-root = r"/content/gdrive/MyDrive/Three Channel Database"
-save_pth = r'/content/gdrive/MyDrive/saves/'
-patch_size = 9
-lr = 0.001
-epochs = 3
-channels = np.array([[1,0,0], [1,1,0], [1,1,1], [1,0,1], [0,1,1], [0,0,1], [0,1,0]])
-
-accuracies = []
-
-for channel in channels:
-  print("\nAssign model")
-  model = classifier().resnet_101()
-  
-  print('\nDefine Loss Function and Optimizer')
-  criterion = nn.BCELoss()
-  optimizer = optim.Adam(model.parameters(), lr)
-  
-  print('\nLoad the data')
-  trainval_loader, test_loader = Dataloader().loader()
-  
-  print('\nVisualise a batch of training data')
-  visualise()._batch_(trainval_loader)
-  
-  print('\nTrain the network')
-  model = loop(trainval_loader).train_model(epochs)
-  
-  print('\nRun on test dataset to calculate test accuracy')
-  accu = loop(test_loader).test_model()
-
-  accuracies.append([accu,channel])
-
-global criterion
-global optimizer
-global model
-global root
-global patch_size
-global save_pth
-global channels
-
-root = r"/content/gdrive/MyDrive/Three Channel Database"
-save_pth = r'/content/gdrive/MyDrive/saves/'
-patch_size = 9
-lr = 0.001
-epochs = 3
-channels = np.array([[1,0,0], [1,1,0], [1,1,1], [1,0,1], [0,1,1], [0,0,1], [0,1,0]])
-
-image, mask, name = visualise().__iter__()
-print('\n ' + str(name))
-plt.imshow(image)
-plt.show()
-plt.imshow(mask, cmap = 'gray', vmin = 0, vmax = 1)
-plt.show()
-
-dices = []
-
-for channel in channels:
-  print("\nAssign model")
-  model = classifier().resnet_101()
-  nmlst = DatasetList(save_pth).__lst__()
-
-  for name in nmlst:
-    if str(channel) in name:
-      model = saveload().model_load(name)
-    
-  print('\nRun the trained model on that single test image')
-  prediction = Decoder(image).single_test()
-  Decoder(image).mask(prediction)
-
-  matimg.imsave(r'/content/gdrive/MyDrive/image channels/' + str(channel) + ".png", prediction, vmin = 0, vmax = 1, cmap = 'gray')
-
-
-  print('\nDice score for prediction to manual mask')
-  dice = metrics().dice(mask,prediction)
-  print(dice)
-  dices.append([dice,channel])
