@@ -265,9 +265,10 @@ class loop():
           inputs, targets = batch
           
           if torch.cuda.is_available():
-              inputs = inputs.cuda()
-              targets = targets.cuda()
-              self.model = self.model.cuda()
+            print("Using CUDA")
+            inputs = inputs.cuda()
+            targets = targets.cuda()
+            self.model = self.model.cuda()
           
           self.optimizer.zero_grad()
           # Set model to training mode
@@ -294,6 +295,7 @@ class loop():
         for input_batch in tqdm(iter(self.data_loader)):
             inputs, targets = input_batch
             if torch.cuda.is_available():
+              print("Using CUDA")
               inputs = inputs.cuda()
               targets = targets.cuda()
               self.model = self.model.cuda()
@@ -435,6 +437,7 @@ class Decoder():
             patch = transform(patch)
 
             if torch.cuda.is_available():
+              print("USING CUDA")
               patch = patch.cuda()
               self.model = self.model.cuda()
             self.model.eval()
