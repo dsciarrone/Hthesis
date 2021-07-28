@@ -19,13 +19,12 @@ def main():
     global model
     global root
     global patch_size
-    global save_pth
     
     root = os.getcwd()
     patch_size = 9
     lr = 0.001
     epochs = 10
-    patch_type = 'patch'
+    patch_type = 'load'
     
     with open('log.txt', 'a') as lg:
       lg.write("\nAssign model")
@@ -119,8 +118,8 @@ class Dataloader():
           patches, targets = self.patcher()
         
         if type == 'load':
-          patches = np.load(root + 'patches.npy')
-          targets = np.load(root + 'targets.npy')
+          patches = np.load(root + '/patches/patches.npy')
+          targets = np.load(root + '/patches/targets.npy')
 
         entire_set = ClassificationDataset(patches, targets, trans = self.transforms)
         train_length = int(0.8* len(entire_set))
@@ -285,15 +284,16 @@ class loop():
          accu = self.validate()
          print("\nAccuracy on Test Data: %5f" %(accu))
          with open('training data.txt', "a") as file:
-              file.writelines('Accuracy on Test Data: ' + str(accu))
+              file.writelines('\nAccuracy on Test Data: ' + str(accu))
          return accu
 
-"""### Save and Load a Model"""
+### Save and Load a Model
 
 class saveload():
   def __init__(self):
     global model_type
     global model
+    global root
 
     self.model = model
     self.model_type = model_type
