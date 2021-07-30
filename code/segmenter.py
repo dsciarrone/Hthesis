@@ -46,6 +46,10 @@ class Decoder():
         y = 0
         for y in range(H):
           x = 0
+          
+          with open('log.txt', 'a') as lg:
+            lg.write("\n  Running model on line " + str(y + 1) + "/" + str(H))
+          
           for x in range(W):
             patch = Image.fromarray(self.img[x :x + patch_size, y : y + patch_size,:])
             transform = transforms.Compose([transforms.Resize(224),
@@ -70,7 +74,7 @@ class Decoder():
         prediction[vessel] = 1
         prediction[background] = 0
 
-        prediction = Image.fromarray(prediction)
+        prediction = Image.fromarray(prediction*255)
 
         return prediction
 
@@ -81,7 +85,7 @@ class Decoder():
       prediction = self.model(mini_batch)
       prediction = (nn.Sigmoid()(prediction['out'].data) >= 0.5).float()
       prediction = np.squeeze(prediction.cpu().detach().numpy())
-      prediction = Image.fromarray(prediction)
+      prediction = Image.fromarray(prediction*255)
       
       return prediction
 
@@ -123,9 +127,15 @@ def decodedir():
     name = os.path.basename(pth)
 
     name = os.path.splitext(name)[0]
-
+    
+    with open('log.txt', 'a') as lg:
+      lg.write("\nOpening " + name + "\n")
+    
     img = Image.open(pth).convert('RGB')
     npimg = np.array(img)
+    
+    with open('log.txt', 'a') as lg:
+      lg.write("\nDecoding " + name + "\n")
     
     if model_type =='classifier':
       mask = Decoder(npimg).classifier()
@@ -133,7 +143,14 @@ def decodedir():
     if model_type == 'encoder':
       mask = Decoder(npimg).encoder()
 
+    with open('log.txt', 'a') as lg:
+      lg.write("\nConverting mask of " + name + " to image\n")
+    
     mask = mask.convert('RGB')
+    
+    with open('log.txt', 'a') as lg:
+      lg.write("\nSaving mask of " + name + " as .png\n")
+    
     mask.save(root + "/Mask_" + model_type + "/" + name + ".png")
 
   return
