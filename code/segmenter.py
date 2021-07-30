@@ -127,6 +127,8 @@ def decodedir():
     name = os.path.basename(pth)
 
     name = os.path.splitext(name)[0]
+
+    bsname = name.split("_", 1)[0]
     
     with open('log.txt', 'a') as lg:
       lg.write("\nOpening " + name + "\n")
@@ -149,9 +151,9 @@ def decodedir():
     mask = mask.convert('RGB')
     
     with open('log.txt', 'a') as lg:
-      lg.write("\nSaving mask of " + name + " as .png\n")
+      lg.write("\nSaving " + bsname + "_mask as .png\n")
     
-    mask.save(root + "/Mask_" + model_type + "/" + name + ".png")
+    mask.save(root + "/Mask_" + model_type + "/" + bsname + "_mask.png")
 
   return
 
