@@ -8,7 +8,6 @@ from PIL import Image
 import numpy as np
 import os
 from natsort import natsorted
-import ntpath
 
 ## Define Main Function
 
@@ -16,15 +15,17 @@ def main():
     global root
     global patch_size
     global model
+    global model_type
     
     root = os.getcwd()
     patch_size = 9
+    model_type = 'classifier'
     model = model_type_input()
 
-    os.mkdir(root + "/Masks")
+    os.mkdir(root + "/Mask_" + model_type)
 
     decodedir()
-    
+
     return 
 
 class Decoder():
@@ -74,32 +75,20 @@ class Decoder():
         return prediction
 
     def encoder(self):
+      self.img = torch.from_numpy(self.img.transpose(2,0,1)).float()
       mini_batch = self.img.unsqueeze(0)
       self.model.eval()
       prediction = self.model(mini_batch)
       prediction = (nn.Sigmoid()(prediction['out'].data) >= 0.5).float()
-      
+      prediction = np.squeeze(prediction.cpu().detach().numpy())
       prediction = Image.fromarray(prediction)
       
       return prediction
 
-class DatasetList():
-    def __init__(self, directory: str):
-      self.dir = directory
-    
-    def __lst__(self):
-      d = self.dir
-      lst = []
-      for path in os.listdir(d):
-          full_path = os.path.join(d, path)
-          if os.path.isfile(full_path):
-              lst.append(full_path)
-      return natsorted(lst)
-
 def model_type_input():
   global model_type
 
-  model_type = input("Choose model type as 'classifier' or 'encoder': ")
+  # model_type = input("Choose model type as 'classifier' or 'encoder': ")
   
   #Load trained model from the State Dict
   if model_type == 'classifier':
@@ -110,13 +99,13 @@ def model_type_input():
               nn.Linear(128, 2),
               nn.Softmax(1))
     
-    model.load_state_dict(torch.load(root + "/resnet101_dict.pt"))
+    model.load_state_dict(torch.load(root + "/state_dicts/resnet101_dict.pt"))
   
   elif model_type == 'encoder':
     model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True, progress=True)
     model.classifier = DeepLabHead(2048, 1)
 
-    model.load_state_dict(torch.load(root + "/DLV3_dict.pt"))
+    model.load_state_dict(torch.load(root + "/state_dicts/DLV3_dict.pt"))
   
   else:
     print('Model type incorrectly input')
@@ -128,10 +117,12 @@ def decodedir():
   global model_type
   global root
 
-  image_pths = DatasetList(root + "/Images")
+  image_pths = DatasetList(root + "/Image").__lst__()
 
   for pth in image_pths:
-    name = ntpath.basename(pth)
+    name = os.path.basename(pth)
+
+    name = os.path.splitext(name)[0]
 
     img = Image.open(pth).convert('RGB')
     npimg = np.array(img)
@@ -140,11 +131,24 @@ def decodedir():
       mask = Decoder(npimg).classifier()
     
     if model_type == 'encoder':
-      mask = Decoder(npimg).classifier()
+      mask = Decoder(npimg).encoder()
 
-    mask.save(root + "/Masks" + name)
+    mask = mask.convert('RGB')
+    mask.save(root + "/Mask_" + model_type + "/" + name + ".png")
 
+  return
 
+class DatasetList():
+    def __init__(self, directory: str):
+        self.dir = directory
+    
+    def __lst__(self):
+        d = self.dir
+        lst = []
+        for path in os.listdir(d):
+            full_path = os.path.join(d, path)
+            if os.path.isfile(full_path):
+                lst.append(full_path)
+        return natsorted(lst)
 
-
-
+main()
