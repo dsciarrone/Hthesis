@@ -28,23 +28,29 @@ def main():
     
     with open('log.txt', 'a') as lg:
       lg.write("\nAssign model")
-      model = classifier().resnet_101()
-      lg.write("\nModel Assigned")
+    
+    model = classifier().resnet_101()
       
+    with open('log.txt', 'a') as lg:
       lg.write('\nDefine Loss Function and Optimizer')
-      criterion = nn.BCELoss()
-      optimizer = optim.Adam(model.parameters(), lr)
-      lg.write('\nLoss function and optimizer defined')
+    
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr)
       
+    with open('log.txt', 'a') as lg:
       lg.write('\nLoad the data')
-      trainval_loader, test_loader = Dataloader().loader(patch_type)
-      lg.write('\nData loaded')
       
+    trainval_loader, test_loader = Dataloader().loader(patch_type)
+      
+    with open('log.txt', 'a') as lg:
       lg.write('\nTrain the network')
-      model = loop(trainval_loader).train_model(epochs)
       
+    model = loop(trainval_loader).train_model(epochs)
+    
+    with open('log.txt', 'a') as lg:
       lg.write('\nRun on test dataset to calculate test accuracy')
-      loop(test_loader).test_model()
+    
+    loop(test_loader).test_model()
 
     return model
 
@@ -146,6 +152,9 @@ class Dataloader():
       num_im = 2
 
       for ii in range(num_im):
+        with open('log.txt', 'a') as lg:
+          lg.write('\n  Patching image ' + str(ii + 1) + "/" + str(num_im))
+        
         im = np.array(Image.open(a[ii]).convert('RGB'))
 
         msk = np.array(Image.open(b[ii]).convert('1'))
@@ -173,12 +182,13 @@ class Dataloader():
               targets = np.append(targets,[[1.0, 0.0]], axis = 0)
             x += 1
           y += 1
-      elements = np.array(random.sample(range(0,len(patches)), 20000))
+      
+      # elements = np.array(random.sample(range(0,len(patches)), 20000))
 
       np.save('patches.npy', patches)
       np.save('targets.npy', targets)
       
-      return np.array(patches)[elements], targets[elements]
+      return np.array(patches), targets
 
 ## Train the Model
 
@@ -196,10 +206,25 @@ class loop():
             
     def train(self):        
         # Initialize loss
-        running_loss = 0.0        
+        running_loss = 0.0
+        total_batches = len(self.data_loader)
+        check = 0        
         # Iterate over the training set
         for batch in iter(self.data_loader):
           inputs, targets = batch
+          
+          if check == 0:
+            with open('log.txt', 'a') as lg:
+              lg.write("\n  Batch " + str(check + 1) + "/" + str(total_batches))
+          
+          else:
+            with open('log.txt', 'r') as lg:
+              list_of_lines = lg.readlines()
+          
+            list_of_lines[-1] = '  Batch ' + str(check + 1) + '/' + str(total_batches) + "\n"
+
+            with open('log.txt', 'w') as lg:
+              lg.writelines(list_of_lines)
           
           if torch.cuda.is_available():
             inputs = inputs.cuda()
@@ -217,6 +242,7 @@ class loop():
           loss.backward()
           self.optimizer.step()
           running_loss += loss.item()
+          check += 1
         
         return running_loss, self.model
     
@@ -226,20 +252,38 @@ class loop():
         # Initialize metrics
         total_train = 0.0
         correct_train = 0.0
+        total_batches = len(self.data_loader)
+        check = 0
         
         # Iterate over input batches
         for input_batch in iter(self.data_loader):
             inputs, targets = input_batch
+            
+            if check == 0:
+              with open('log.txt', 'a') as lg:
+                lg.write("\n  Batch " + str(check + 1) + "/" + str(total_batches))
+          
+            else:
+              with open('log.txt', 'r') as lg:
+                list_of_lines = lg.readlines()
+            
+              list_of_lines[-1] = '  Batch ' + str(check + 1) + '/' + str(total_batches) + "\n"
+
+              with open('log.txt', 'w') as lg:
+                lg.writelines(list_of_lines)
+            
             if torch.cuda.is_available():
               inputs = inputs.cuda()
               targets = targets.cuda()
               self.model = self.model.cuda()
+            
             outputs = self.model(inputs)
             predictions = torch.argmax(outputs, axis = 1)
             truths = torch.argmax(targets, axis = 1)
             total_train += truths.nelement()
             correct_train += predictions.eq(truths).sum().item()
             train_accuracy = 100*correct_train/total_train
+            check += 1
         
         return train_accuracy
     
@@ -248,18 +292,28 @@ class loop():
         error_count = 0
       
         for epoch in range(1, num_epochs + 1):
-            print('\nEpoch {}/{}'.format(epoch, num_epochs))
-            print('-' * 10)
+            with open('log.txt', 'a') as lg:
+              lg.write('\nEpoch {}/{}'.format(epoch, num_epochs))
+              lg.write('-' * 10)
+            
             # Training Loop
             train = self.train()
             train_loss = train[0]
-            print('\nTraining loss: %9f' %(train_loss))
+            
+            with open('log.txt', 'a') as lg:
+              lg.write('\nTraining loss: %9f' %(train_loss))
+            
             # Validation Loop
             valid_accu = self.validate()
-            print('\nValidation Accuracy: %9f' %(valid_accu))
+            
+            with open('log.txt', 'a') as lg:
+              lg.write('\nValidation Accuracy: %9f' %(valid_accu))
+            
             train_model[epoch] = [valid_accu, train[1]]
+            
             with open('training data.txt', "a") as file:
               file.writelines('\nEpoch ' + str(epoch) + ' Train Loss: ' + str(train[0]) + ' Valid Accu: ' + str(train_model[epoch][0]))
+            
             # Termination Conditions
             current_accu = list(train_model.values())[epoch - 1][0]
             min_accu = min(train_model.values())[0]
@@ -268,7 +322,8 @@ class loop():
                 error_count += 1
             
             elif error_count >= 5:
-                print("\n*****Optimization error, restarting training*****\n")
+                with open('log.txt', 'a') as lg:
+                  lg.write("\n*****Optimization error, restarting training*****\n")
                 main()
                 break
 
@@ -282,9 +337,12 @@ class loop():
     def test_model(self):
          # Test Loop
          accu = self.validate()
-         print("\nAccuracy on Test Data: %5f" %(accu))
+         
+         with open('log.txt', 'a') as lg:
+           lg.write("\nAccuracy on Test Data: %5f" %(accu))
          with open('training data.txt', "a") as file:
-              file.writelines('\nAccuracy on Test Data: ' + str(accu))
+           file.writelines('\nAccuracy on Test Data: ' + str(accu))
+         
          return accu
 
 ### Save and Load a Model
